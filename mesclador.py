@@ -105,6 +105,39 @@ def _calcular_similaridade_inteligente(arquivo1: str, arquivo2: str) -> dict:
     }
 
 
+def _criar_pasta_mesclados(diretorio_base: Path) -> Path:
+    """
+    Cria a pasta 'Mesclados' no diretório base se não existir.
+    Retorna o caminho da pasta criada.
+    """
+    pasta_mesclados = diretorio_base / "Mesclados"
+    pasta_mesclados.mkdir(exist_ok=True)
+    logger.info("Pasta criada/verificada: %s", pasta_mesclados)
+    return pasta_mesclados
+
+
+def _configurar_log_pasta_mesclados(pasta_mesclados: Path):
+    """
+    Configura um logger específico para salvar erros na pasta Mesclados.
+    """
+    log_file_mesclados = pasta_mesclados / "log_erros_mesclagem.txt"
+    
+    # Remove handler anterior se existir
+    for handler in logger.handlers[:]:
+        if isinstance(handler, logging.FileHandler) and "mesclagem" in str(handler.baseFilename):
+            logger.removeHandler(handler)
+            handler.close()
+    
+    # Adiciona novo handler para a pasta Mesclados
+    error_handler = logging.FileHandler(log_file_mesclados, mode='a', encoding='utf-8')
+    error_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    error_handler.setLevel(logging.WARNING)  # Só warnings e erros
+    logger.addHandler(error_handler)
+    
+    logger.info("Log de erros configurado: %s", log_file_mesclados)
+    return log_file_mesclados
+
+
 def _proximo_nome_disponivel(caminho_saida: Path) -> Path:
     """Encontra próximo nome disponível se arquivo já existir"""
     if not caminho_saida.exists():
@@ -121,6 +154,7 @@ def _proximo_nome_disponivel(caminho_saida: Path) -> Path:
 def encontrar_e_mesclar_similares(diretorio: str, limiar_similaridade: float = 0.7):
     """
     Versão melhorada que detecta similaridade por números e texto.
+    Salva arquivos mesclados na pasta 'Mesclados' e logs de erro na mesma pasta.
     """
     try:
         dirpath = Path(diretorio)
@@ -129,18 +163,28 @@ def encontrar_e_mesclar_similares(diretorio: str, limiar_similaridade: float = 0
             logger.error("Pasta inválida: %s", diretorio)
             return
 
-        logger.info("Buscando PDFs em: %s", diretorio)
+        logger.info("=== INICIANDO PROCESSO DE MESCLAGEM ===")
+        logger.info("Diretório de origem: %s", diretorio)
+
+        # Criar pasta 'Mesclados'
+        pasta_mesclados = _criar_pasta_mesclados(dirpath)
+        
+        # Configurar log específico para a pasta Mesclados
+        log_file_mesclados = _configurar_log_pasta_mesclados(pasta_mesclados)
+
         arquivos_pdf = sorted([f for f in os.listdir(diretorio) if f.lower().endswith(".pdf")])
+        logger.info("Encontrados %d arquivos PDF", len(arquivos_pdf))
 
         if len(arquivos_pdf) < 2:
-            logger.warning("Menos de 2 PDFs.")
-            messagebox.showwarning("Aviso", "Precisa de ao menos 2 PDFs na pasta.")
+            logger.warning("Menos de 2 PDFs encontrados.")
+            messagebox.showwarning("Aviso", "Precisa de ao menos 2 PDFs na pasta para mesclar.")
             return
 
         processados = set()
         grupos_mesclados = 0
+        arquivos_com_erro = []
 
-        logger.info("Analisando %d arquivos PDF...", len(arquivos_pdf))
+        logger.info("Analisando %d arquivos PDF com limiar de %.0f%%...", len(arquivos_pdf), limiar_similaridade * 100)
 
         for i in range(len(arquivos_pdf)):
             atual = arquivos_pdf[i]
@@ -210,33 +254,104 @@ def encontrar_e_mesclar_similares(diretorio: str, limiar_similaridade: float = 0
                     else:
                         nome_saida = f"{Path(grupo[0]).stem}_mesclado.pdf"
                     
-                    caminho_saida = _proximo_nome_disponivel(dirpath / nome_saida)
+                    # Salvar na pasta 'Mesclados'
+                    caminho_saida = _proximo_nome_disponivel(pasta_mesclados / nome_saida)
                     logger.info("Salvando arquivo mesclado: %s", caminho_saida.name)
                     
-                    with open(caminho_saida, "wb") as f:
-                        writer.write(f)
-                    
-                    logger.info("✓ Arquivo criado com sucesso: %s", caminho_saida.name)
+                    try:
+                        with open(caminho_saida, "wb") as f:
+                            writer.write(f)
+                        
+                        logger.info("✓ Arquivo criado com sucesso: %s", caminho_saida.name)
+                        logger.info("📁 Localização: %s", caminho_saida.relative_to(dirpath))
+                        
+                    except Exception as e_save:
+                        logger.error("❌ Erro ao salvar arquivo '%s': %s", nome_saida, e_save)
+                        arquivos_com_erro.append(f"Erro ao salvar {nome_saida}: {str(e_save)}")
+                        continue
+                        
                 else:
-                    logger.warning("Grupo descartado. Menos de 2 PDFs válidos.")
+                    logger.warning("⚠️ Grupo descartado. Menos de 2 PDFs válidos após processamento.")
+                    if len(grupo) > 1:
+                        arquivos_com_erro.append(f"Grupo {grupo} descartado: PDFs inválidos ou criptografados")
 
                 grupos_mesclados += 1
-                logger.info("=== FIM DO GRUPO ===")
+                logger.info("=== FIM DO GRUPO %d ===", grupos_mesclados)
 
-        # Resultado final
+        # Resultado final e relatório
+        logger.info("=== PROCESSO CONCLUÍDO ===")
+        
+        # Gerar relatório de erros se houver
+        if arquivos_com_erro:
+            relatorio_erros = pasta_mesclados / "relatorio_erros.txt"
+            try:
+                with open(relatorio_erros, 'w', encoding='utf-8') as f:
+                    f.write(f"RELATÓRIO DE ERROS - MESCLAGEM DE PDFs\n")
+                    f.write(f"{'=' * 50}\n")
+                    f.write(f"Data/Hora: {logging.Formatter().formatTime(logging.LogRecord('', 0, '', 0, '', (), None))}\n")
+                    f.write(f"Pasta processada: {dirpath}\n")
+                    f.write(f"Total de arquivos processados: {len(arquivos_pdf)}\n")
+                    f.write(f"Grupos criados com sucesso: {grupos_mesclados}\n")
+                    f.write(f"Erros encontrados: {len(arquivos_com_erro)}\n\n")
+                    f.write("DETALHES DOS ERROS:\n")
+                    f.write("-" * 30 + "\n")
+                    for i, erro in enumerate(arquivos_com_erro, 1):
+                        f.write(f"{i}. {erro}\n")
+                    f.write(f"\nVerifique também o log completo: {log_file_mesclados.name}\n")
+                
+                logger.warning("📄 Relatório de erros gerado: %s", relatorio_erros.name)
+                
+            except Exception as e_relatorio:
+                logger.error("Erro ao gerar relatório: %s", e_relatorio)
+
         if grupos_mesclados > 0:
-            logger.info("CONCLUÍDO! %d grupo(s) processado(s).", grupos_mesclados)
-            messagebox.showinfo("Sucesso", 
-                              f"{grupos_mesclados} grupo(s) de PDFs mesclado(s) com sucesso!\n"
-                              f"Arquivos salvos na mesma pasta.")
+            mensagem_sucesso = f"""✅ MESCLAGEM CONCLUÍDA!
+
+📊 Resultado:
+• {grupos_mesclados} grupo(s) de PDFs mesclados
+• Arquivos salvos na pasta: 'Mesclados'
+• Total de PDFs processados: {len(arquivos_pdf)}"""
+
+            if arquivos_com_erro:
+                mensagem_sucesso += f"""
+
+⚠️ Atenção:
+• {len(arquivos_com_erro)} arquivo(s) com problemas
+• Verifique o relatório de erros na pasta 'Mesclados'"""
+
+            logger.info("CONCLUÍDO! %d grupo(s) processado(s) com sucesso.", grupos_mesclados)
+            messagebox.showinfo("Mesclagem Concluída", mensagem_sucesso)
         else:
             logger.info("Nenhum grupo encontrado com similaridade >= %.0f%%", limiar_similaridade * 100)
-            messagebox.showinfo("Concluído", 
-                              f"Nenhum grupo atingiu a similaridade mínima de {limiar_similaridade*100:.0f}%.")
+            mensagem = f"""ℹ️ PROCESSO CONCLUÍDO
+
+Nenhum grupo atingiu a similaridade mínima de {limiar_similaridade*100:.0f}%.
+
+💡 Sugestões:
+• Diminua o nível de similaridade
+• Verifique se os arquivos têm elementos em comum
+• Consulte o log na pasta 'Mesclados' para mais detalhes"""
+            
+            messagebox.showinfo("Nenhum Grupo Encontrado", mensagem)
 
     except Exception as e:
-        logger.error("Erro inesperado: %s", e, exc_info=True)
-        messagebox.showerror("Erro", f"Ocorreu um erro inesperado:\n{e}")
+        logger.error("❌ ERRO CRÍTICO no processo: %s", e, exc_info=True)
+        messagebox.showerror("Erro Crítico", 
+                           f"Ocorreu um erro inesperado durante o processamento:\n\n{str(e)}\n\n"
+                           f"Verifique o log de erros para mais detalhes.")
+        
+        # Tentar salvar erro crítico na pasta Mesclados se possível
+        try:
+            if 'pasta_mesclados' in locals():
+                erro_critico = pasta_mesclados / "erro_critico.txt"
+                with open(erro_critico, 'w', encoding='utf-8') as f:
+                    f.write(f"ERRO CRÍTICO - {logging.Formatter().formatTime(logging.LogRecord('', 0, '', 0, '', (), None))}\n")
+                    f.write(f"{'=' * 50}\n")
+                    f.write(f"Diretório: {diretorio}\n")
+                    f.write(f"Erro: {str(e)}\n")
+                    f.write(f"Trace completo disponível no log principal.\n")
+        except:
+            pass  # Se não conseguir salvar, pelo menos o erro principal foi logado
 
 
 class App(tk.Tk):
@@ -279,8 +394,9 @@ class App(tk.Tk):
 
         # Explicação
         explicacao = ttk.Label(config_frame, 
-                             text="Detecta automaticamente números iguais nos nomes dos arquivos\n"
-                                  "Ex: 'Sentença 249023' + 'Parecer 249023' = Mesclagem automática",
+                             text="✅ Detecta números iguais automaticamente\n"
+                                  "📁 Salva arquivos mesclados na pasta 'Mesclados'\n"
+                                  "📋 Gera relatório de erros quando necessário",
                              font=("Arial", 8), foreground="blue")
         explicacao.pack(pady=5)
 

@@ -17,16 +17,13 @@ O **Mesclador Inteligente de PDFs** é uma ferramenta que identifica automaticam
 
 ### Exemplo Prático:
 ```
-📁 Pasta de entrada:
-├── Sentença_249023_inicial.pdf
-├── Parecer_249023_técnico.pdf
-├── Citação_249023_final.pdf
-├── Contrato_1390_João.pdf
-├── Aditivo_1390_alterações.pdf
-
-📁 Resultado:
-├── Mesclado_249023.pdf (3 arquivos mesclados)
-├── Mesclado_1390.pdf (2 arquivos mesclados)
+📁 Documentos/
+├── Sentença_249023.pdf
+├── Parecer_249023.pdf
+└── 📁 Mesclados/
+    ├── Mesclado_249023.pdf ← arquivos mesclados organizados
+    ├── log_erros_mesclagem.txt ← log específico
+    └── relatorio_erros.txt ← só se houver erros
 ```
 
 ## ✨ Características Principais
@@ -49,33 +46,11 @@ O **Mesclador Inteligente de PDFs** é uma ferramenta que identifica automaticam
 
 ## 📦 Instalação
 
-### Opção 1: Executável Pronto (Recomendado)
+### Executável Pronto (Recomendado)
 1. Baixe o arquivo `MescladorPDF.exe` da seção [Releases](../../releases)
 2. Execute diretamente - não precisa instalar nada!
 
-### Opção 2: Executar o Código Python
-```bash
-# Clone o repositório
-git clone https://github.com/seu-usuario/mesclador-pdf.git
-cd mesclador-pdf
 
-# Instale as dependências
-pip install pypdf tkinter
-
-# Execute o programa
-python mesclador.py
-```
-
-### Opção 3: Compilar o Executável
-```bash
-# Instale o PyInstaller
-pip install pyinstaller pypdf
-
-# Compile usando o arquivo .spec
-pyinstaller MescladorPDF.spec
-
-# O executável estará em dist/MescladorPDF.exe
-```
 
 ## 🎮 Como Usar
 
@@ -116,7 +91,6 @@ mesclador-pdf/
 ├── requirements.txt       # Dependências
 ├── README.md             # Esta documentação
 ├── LICENSE              # Licença MIT
-└── exemplos/            # Arquivos de teste
 ```
 
 ## 📊 Exemplos de Uso
@@ -144,26 +118,6 @@ Relatório_Projeto_Alpha_v2.pdf
 Relatório_Projeto_Alpha_final.pdf
 → Resultado: Mesclado_Alpha.pdf (por similaridade textual)
 ```
-
-## 🐛 Solução de Problemas
-
-### ❌ "Módulo pypdf não encontrado"
-```bash
-pip install pypdf
-# ou use o executável que já inclui tudo
-```
-
-### ❌ "Menos de 2 PDFs encontrados"
-- Verifique se há arquivos .pdf na pasta selecionada
-- Confirme se os arquivos não estão corrompidos
-
-### ❌ "PDF criptografado ignorado"
-- O programa pula PDFs com senha automaticamente
-- Remova a proteção antes de processar
-
-### ❌ Antivírus bloqueia o executável
-- Isso é normal com executáveis do PyInstaller
-- Adicione uma exceção no antivírus
 
 ## 🤝 Como Contribuir
 
@@ -206,9 +160,9 @@ Este projeto está sob a licença **MIT**. Veja o arquivo [LICENSE](LICENSE) par
 
 ## 📈 Estatísticas do Projeto
 
-![GitHub stars](https://img.shields.io/github/stars/rodineyw/mesclador-pdf)
-![GitHub forks](https://img.shields.io/github/forks/rodineyw/mesclador-pdf)
-![GitHub issues](https://img.shields.io/github/issues/rodineyw/mesclador-pdf)
+![GitHub stars](https://img.shields.io/github/stars/rodineyw/mesclar_doc)
+![GitHub forks](https://img.shields.io/github/forks/rodineyw/mesclar_doc)
+![GitHub issues](https://img.shields.io/github/issues/rodineyw/mesclar_doc)
 
 ---
 
