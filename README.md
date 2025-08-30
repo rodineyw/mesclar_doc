@@ -156,14 +156,5 @@ Este projeto está sob a licença **MIT**. Veja o arquivo [LICENSE](LICENSE) par
 
 **Rod** - [GitHub](https://github.com/rodineyw) | [LinkedIn](https://linkedin.com/in/rodineyw)
 
----
-
-## 📈 Estatísticas do Projeto
-
-![GitHub stars](https://img.shields.io/github/stars/rodineyw/mesclar_doc)
-![GitHub forks](https://img.shields.io/github/forks/rodineyw/mesclar_doc)
-![GitHub issues](https://img.shields.io/github/issues/rodineyw/mesclar_doc)
-
----
 
 **⭐ Se este projeto te ajudou, deixe uma estrela no repositório!**
