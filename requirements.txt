@@ -1,0 +1,5 @@
+pdfmerger==0.5.0
+pillow==10.4.0
+pypdf==6.0.0
+pypdf2==3.0.1
+ttkbootstrap==1.14.2
